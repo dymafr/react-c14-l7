@@ -1,7 +1,39 @@
 import React from 'react';
+import * as yup from 'yup';
 import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 
 function App() {
+  const schema = yup.object({
+    name: yup
+      .string()
+      .required('Le champ est obligatoire')
+      .min(2, 'Trop court')
+      .max(5, 'Trop long')
+      .test('isYes', "Vous n'avez pas de chance", async () => {
+        const response = await fetch('https://yesno.wtf/api');
+        const result = await response.json();
+        console.log(result);
+        return result.answer === 'yes';
+      }),
+    age: yup
+      .number()
+      .typeError('Veuillez entre un nombre')
+      .min(18, 'Trop jeune'),
+    password: yup
+      .string()
+      .required('Le mot de passe est obligatoire')
+      .min(5, 'Mot de passe trop court')
+      .max(10, 'Mot de passe trop long'),
+    confirmPassword: yup
+      .string()
+      .required('Vous devez confirmer votre mot de passe')
+      .oneOf(
+        [yup.ref('password'), ''],
+        'Les mots de passe ne correspondent pas'
+      ),
+  });
+
   const {
     register,
     handleSubmit,
@@ -9,6 +41,8 @@ function App() {
     reset,
     setError,
     clearErrors,
+    setFocus,
+    trigger,
   } = useForm({
     defaultValues: {
       name: '',
@@ -21,6 +55,8 @@ function App() {
       password: '',
       confim: '',
     },
+    criteriaMode: 'all',
+    resolver: yupResolver(schema),
   });
 
   async function submit(values) {
@@ -43,6 +79,7 @@ function App() {
       }
     } catch (e) {
       setError('globalError', { type: 'global', message: e.message });
+      setFocus('age');
     }
   }
 
@@ -58,7 +95,11 @@ function App() {
           </label>
           <input id="name" type="text" {...register('name')} />
           {errors?.name && (
-            <p style={{ color: 'red' }}>{errors.name.message}</p>
+            <ul style={{ color: 'red' }}>
+              {Object.keys(errors.name.types).map((k) => (
+                <li key={k}>{errors.name.types[k]}</li>
+              ))}
+            </ul>
           )}
         </div>
         <div className="d-flex flex-column mb-20">
